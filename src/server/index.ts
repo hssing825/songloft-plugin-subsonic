@@ -354,28 +354,52 @@ const handleStream: Handler = async (_req, query) => {
   return { serveFile: { songId } }
 }
 
+async function proxyHostCover(path: string): Promise<HTTPResponse> {
+  try {
+    const token = await songloft.plugin.getToken()
+    const hostUrl = (await songloft.plugin.getHostUrl()).replace(/\/$/, '')
+    const separator = path.includes('?') ? '&' : '?'
+    const resp = await fetch(`${hostUrl}${path}${separator}access_token=${encodeURIComponent(token)}`)
+    const headers: Record<string, string> = {}
+    const contentType = resp.headers.get('content-type')
+    const cacheControl = resp.headers.get('cache-control')
+    if (contentType) headers['Content-Type'] = contentType
+    if (cacheControl) headers['Cache-Control'] = cacheControl
+
+    if (!resp.ok) {
+      return { statusCode: resp.status, headers, body: '' }
+    }
+
+    const buf = await resp.arrayBuffer()
+    return {
+      statusCode: resp.status,
+      headers: {
+        'Content-Type': contentType || 'image/jpeg',
+        ...(cacheControl ? { 'Cache-Control': cacheControl } : {}),
+      },
+      body: new Uint8Array(buf),
+    }
+  } catch {
+    return { statusCode: 502, headers: {}, body: '' }
+  }
+}
+
 const handleGetCoverArt: Handler = async (_req, query) => {
   const id = query.get('id') || ''
-  const token = await songloft.plugin.getToken()
 
   if (id.startsWith('pl-')) {
     const plId = id.slice(3)
-    return {
-      statusCode: 302,
-      headers: { 'Location': `/api/v1/playlists/${plId}/cover?access_token=${token}` },
-      body: ''
+    if (!/^\d+$/.test(plId)) {
+      return { statusCode: 404, headers: {}, body: '' }
     }
+    return proxyHostCover(`/api/v1/playlists/${plId}/cover`)
   }
 
-  const numId = parseInt(id.replace(/^(al|ar)-/, ''))
-  if (isNaN(numId)) {
+  const rawId = id.replace(/^(al|ar)-/, '')
+  if (!/^\d+$/.test(rawId)) {
     return { statusCode: 404, headers: {} as Record<string, string>, body: '' }
   }
-  return {
-    statusCode: 302,
-    headers: { 'Location': `/api/v1/songs/${numId}/cover?access_token=${token}` } as Record<string, string>,
-    body: ''
-  }
+  return proxyHostCover(`/api/v1/songs/${rawId}/cover`)
 }
 
 function parseLRC(lrc: string): { synced: boolean; line: { start?: number; value: string }[] } {

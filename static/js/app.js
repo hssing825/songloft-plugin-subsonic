@@ -25,6 +25,22 @@ function showProgress(show, title = '正在处理', text = '请稍候...') {
     }
 }
 
+function renderMessage(container, message, isError = false) {
+    const state = document.createElement('div')
+    state.className = 'empty-state'
+    if (isError) state.style.color = 'var(--md-error)'
+    state.textContent = message
+    container.replaceChildren(state)
+}
+
+function createIcon(name, color) {
+    const icon = document.createElement('span')
+    icon.className = 'material-symbols-outlined'
+    if (color) icon.style.color = color
+    icon.textContent = name
+    return icon
+}
+
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'))
     document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'))
@@ -145,25 +161,41 @@ async function saveEditServer() {
 function renderServerList() {
     const container = document.getElementById('serverList')
     if (currentServers.length === 0) {
-        container.innerHTML = '<div class="empty-state">暂无服务器，请先添加</div>'
+        renderMessage(container, '暂无服务器，请先添加')
         return
     }
-    container.innerHTML = ''
+    container.replaceChildren()
     currentServers.forEach(server => {
         const item = document.createElement('div')
         item.style.cssText = 'display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--md-outline-variant)'
-        item.innerHTML = `
-            <div style="flex:1; min-width:0;">
-                <div style="font-size:16px;color:var(--md-on-surface);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${server.name}</div>
-                <div style="font-size:13px;color:var(--md-on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${server.url}</div>
-            </div>
-            <div class="list-item-trailing">
-                <button class="btn-icon btn-edit" title="编辑" style="color:var(--md-primary)"><span class="material-symbols-outlined">edit</span></button>
-                <button class="btn-icon btn-delete" style="color:var(--md-error)" title="删除"><span class="material-symbols-outlined">delete</span></button>
-            </div>
-        `
-        item.querySelector('.btn-edit').onclick = () => openEditDialog(server.name)
-        item.querySelector('.btn-delete').onclick = () => deleteServer(server.name)
+
+        const details = document.createElement('div')
+        details.style.cssText = 'flex:1;min-width:0'
+        const name = document.createElement('div')
+        name.style.cssText = 'font-size:16px;color:var(--md-on-surface);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+        name.textContent = server.name
+        const url = document.createElement('div')
+        url.style.cssText = 'font-size:13px;color:var(--md-on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+        url.textContent = server.url
+        details.append(name, url)
+
+        const trailing = document.createElement('div')
+        trailing.className = 'list-item-trailing'
+        const editButton = document.createElement('button')
+        editButton.className = 'btn-icon btn-edit'
+        editButton.title = '编辑'
+        editButton.style.color = 'var(--md-primary)'
+        editButton.appendChild(createIcon('edit'))
+        editButton.addEventListener('click', () => openEditDialog(server.name))
+        const deleteButton = document.createElement('button')
+        deleteButton.className = 'btn-icon btn-delete'
+        deleteButton.title = '删除'
+        deleteButton.style.color = 'var(--md-error)'
+        deleteButton.appendChild(createIcon('delete'))
+        deleteButton.addEventListener('click', () => deleteServer(server.name))
+        trailing.append(editButton, deleteButton)
+
+        item.append(details, trailing)
         container.appendChild(item)
     })
 }
@@ -199,22 +231,27 @@ function renderItems(items, title) {
     document.getElementById('browserPathDisplay').textContent = title
     
     if (items.length === 0) {
-        container.innerHTML = '<div class="empty-state">空目录或无结果</div>'
+        renderMessage(container, '空目录或无结果')
         return
     }
     
-    container.innerHTML = ''
+    container.replaceChildren()
     
     // Add "Select All" button in select mode
     if (isSelectMode) {
         const selectAllDiv = document.createElement('div')
         selectAllDiv.style.cssText = 'display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--md-outline-variant);cursor:pointer;gap:12px;'
         const allSelected = items.every(item => item.type !== 'file' || selectedItems.has(item.id))
-        selectAllDiv.innerHTML = `
-            <input type="checkbox" class="checkbox-custom" ${allSelected ? 'checked' : ''} style="pointer-events:none">
-            <span style="font-weight:500;font-size:14px;color:var(--md-primary)">全选本页歌曲</span>
-        `
-        selectAllDiv.onclick = () => {
+        const checkbox = document.createElement('input')
+        checkbox.type = 'checkbox'
+        checkbox.className = 'checkbox-custom'
+        checkbox.checked = allSelected
+        checkbox.style.pointerEvents = 'none'
+        const label = document.createElement('span')
+        label.style.cssText = 'font-weight:500;font-size:14px;color:var(--md-primary)'
+        label.textContent = '全选本页歌曲'
+        selectAllDiv.append(checkbox, label)
+        selectAllDiv.addEventListener('click', () => {
             const willSelect = !allSelected
             items.forEach(item => {
                 if (item.type === 'file') {
@@ -224,7 +261,7 @@ function renderItems(items, title) {
             })
             renderItems(items, title) // re-render to update checkboxes
             updateFAB()
-        }
+        })
         container.appendChild(selectAllDiv)
     }
 
@@ -239,30 +276,44 @@ function renderItems(items, title) {
         const color = (item.type === 'directory' || item.type === 'playlist') ? 'var(--md-primary)' : 'var(--md-on-surface)'
         const subtitle = item.type === 'directory' ? 'Artist/Album' : item.type === 'playlist' ? `${item.songCount || 0} 首歌曲` : (item.artist ? item.artist + ' - ' : '') + (item.album || '')
         
-        // Front section (Icon or Checkbox)
-        let leadingHtml = ''
         if (isSelectMode && item.type === 'file') {
-            leadingHtml = `<input type="checkbox" class="checkbox-custom" ${isSelected ? 'checked' : ''} style="pointer-events:none;margin-right:12px;">`
+            const checkbox = document.createElement('input')
+            checkbox.type = 'checkbox'
+            checkbox.className = 'checkbox-custom'
+            checkbox.checked = isSelected
+            checkbox.style.cssText = 'pointer-events:none;margin-right:12px'
+            el.appendChild(checkbox)
         } else {
-            leadingHtml = `<span class="material-symbols-outlined" style="color:${color};margin-right:12px">${icon}</span>`
+            const leadingIcon = createIcon(icon, color)
+            leadingIcon.style.marginRight = '12px'
+            el.appendChild(leadingIcon)
         }
 
-        // Trailing section (Import button)
-        let trailingHtml = ''
+        const details = document.createElement('div')
+        details.style.cssText = 'flex:1;overflow:hidden'
+        const name = document.createElement('div')
+        name.style.cssText = 'font-size:14px;color:var(--md-on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+        name.textContent = item.name
+        const subtitleElement = document.createElement('div')
+        subtitleElement.style.cssText = 'font-size:12px;color:var(--md-on-surface-variant);margin-top:2px'
+        subtitleElement.textContent = subtitle
+        details.append(name, subtitleElement)
+        el.appendChild(details)
+
         if (item.type === 'file') {
-            trailingHtml = `<button class="btn-icon" title="导入此曲" style="color:var(--md-primary);" onclick="event.stopPropagation(); window._importSingle('${item.id}')"><span class="material-symbols-outlined">add_circle</span></button>`
+            const importButton = document.createElement('button')
+            importButton.className = 'btn-icon'
+            importButton.title = '导入此曲'
+            importButton.style.color = 'var(--md-primary)'
+            importButton.appendChild(createIcon('add_circle'))
+            importButton.addEventListener('click', event => {
+                event.stopPropagation()
+                window._importSingle(item.id)
+            })
+            el.appendChild(importButton)
         }
 
-        el.innerHTML = `
-            ${leadingHtml}
-            <div style="flex:1;overflow:hidden">
-                <div style="font-size:14px;color:var(--md-on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</div>
-                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px">${subtitle}</div>
-            </div>
-            ${trailingHtml}
-        `
-        
-        el.onclick = () => {
+        el.addEventListener('click', () => {
             if (item.type === 'directory') {
                 const serverName = document.getElementById('browserServerSelect').value
                 pathStack.push(item.id)
@@ -280,7 +331,7 @@ function renderItems(items, title) {
                     showSnackbar('可以直接播放: ' + item.name)
                 }
             }
-        }
+        })
         
         container.appendChild(el)
     })
@@ -325,7 +376,7 @@ async function loadDirectory(serverName, dirId) {
         currentPathId = dirId
         renderItems(items, dirId === 'root' ? 'Artists' : `[ID: ${dirId}]`)
     } catch (e) {
-        container.innerHTML = `<div class="empty-state" style="color:var(--md-error)">加载失败: ${e}</div>`
+        renderMessage(container, '加载失败: ' + e, true)
     }
 }
 
@@ -347,7 +398,7 @@ async function searchSongsList() {
         currentPathId = 'search'
         renderItems(items, `搜索结果: ${keyword}`)
     } catch (e) {
-        container.innerHTML = `<div class="empty-state" style="color:var(--md-error)">搜索失败: ${e}</div>`
+        renderMessage(container, '搜索失败: ' + e, true)
     }
 }
 
@@ -367,7 +418,7 @@ async function fetchPlaylists() {
         currentPathId = 'playlists'
         renderItems(items, '歌单列表')
     } catch (e) {
-        container.innerHTML = `<div class="empty-state" style="color:var(--md-error)">加载失败: ${e}</div>`
+        renderMessage(container, '加载失败: ' + e, true)
     }
 }
 
@@ -384,7 +435,7 @@ async function loadPlaylistSongs(serverName, playlistId, playlistName) {
         currentPathId = `playlist_${playlistId}`
         renderItems(items, playlistName)
     } catch (e) {
-        container.innerHTML = `<div class="empty-state" style="color:var(--md-error)">加载失败: ${e}</div>`
+        renderMessage(container, '加载失败: ' + e, true)
     }
 }
 
@@ -404,7 +455,7 @@ async function fetchSpecialList(type, title) {
         currentPathId = type
         renderItems(items, title)
     } catch (e) {
-        container.innerHTML = `<div class="empty-state" style="color:var(--md-error)">加载失败: ${e}</div>`
+        renderMessage(container, '加载失败: ' + e, true)
     }
 }
 
