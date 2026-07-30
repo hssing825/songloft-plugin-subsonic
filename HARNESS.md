@@ -5,7 +5,7 @@
 - **BuildCommand / harness:build**: `npm run build`
 - **TestCommand / harness:test**: `npm test`
 - **QuickCommand / harness:quick**: `npm run build`
-- **BugfixCommand / harness:bugfix**: `node --test tests/*.test.mjs`
+- **BugfixCommand / harness:bugfix**: `npm run build && node --test tests/release-metadata-contract.test.mjs tests/release-package-contract.test.mjs`
 - **FullCommand / harness:full**: `npm test && ./node_modules/.bin/tsc --noEmit && npm run validate`
 
 ## Evidence

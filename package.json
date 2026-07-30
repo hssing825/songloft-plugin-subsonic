@@ -1,10 +1,10 @@
 {
   "name": "subsonic",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "通过 Subsonic API 接入外部音乐库 (如 Navidrome)",
   "private": true,
   "scripts": {
-    "build": "songloft-plugin build",
+    "build": "node scripts/build.mjs",
     "dev": "songloft-plugin dev",
     "test": "npm run build && node --test tests/*.test.mjs",
     "validate": "songloft-plugin validate",
@@ -13,6 +13,7 @@
   "devDependencies": {
     "@songloft/plugin-builder": "^2.4.3",
     "@songloft/plugin-sdk": "^2.9.0",
+    "jszip": "^3.10.1",
     "typescript": "^5.9.3"
   }
 }

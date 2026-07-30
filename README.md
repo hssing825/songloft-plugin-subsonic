@@ -15,13 +15,13 @@
 
 ```bash
 # 安装依赖
-pnpm install
+npm ci
 
 # 本地调试与开发
-pnpm run dev
+npm run dev
 
 # 构建生产环境插件包 (产物位于 dist/subsonic.jsplugin.zip)
-pnpm run build
+npm run build
 ```
 
 ## 📄 License
