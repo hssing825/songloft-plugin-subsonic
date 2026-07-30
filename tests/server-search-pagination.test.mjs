@@ -1,19 +1,12 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
+import { loadExecutablePluginBundle } from './helpers/load-plugin-bundle.mjs'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const bundlePath = join(repoRoot, 'dist', 'subsonic.jsplugin.zip')
-const pluginBundle = spawnSync('unzip', ['-p', bundlePath, 'main.js'], {
-  encoding: 'utf8',
-})
-
-if (pluginBundle.status !== 0 || !pluginBundle.stdout) {
-  throw new Error(`Failed to read main.js from build artifact: ${pluginBundle.stderr}`)
-}
+const pluginBundle = await loadExecutablePluginBundle(repoRoot)
 
 function loadPlugin(searchCalls) {
   const songs = Array.from({ length: 45 }, (_, index) => ({
@@ -47,7 +40,7 @@ function loadPlugin(searchCalls) {
   }
   globalThis.__go_crypto_md5 = () => 'unused'
 
-  vm.runInThisContext(pluginBundle.stdout, { filename: 'subsonic-main.js' })
+  vm.runInThisContext(pluginBundle, { filename: 'subsonic-main.js' })
   return globalThis.onHTTPRequest
 }
 
