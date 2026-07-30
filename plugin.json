@@ -8,7 +8,7 @@
   "license": "Apache-2.0",
   "icon": "icon.svg",
   "entryPath": "subsonic",
-  "main": "main.js",
+  "main": "main.jsc",
   "minHostVersion": "1.5.0",
   "permissions": [
     "storage",
@@ -24,6 +24,6 @@
   ],
   "updateUrl": "https://raw.githubusercontent.com/songloft-org/songloft-plugin-subsonic/main/plugin.json",
   "download_url": "https://github.com/songloft-org/songloft-plugin-subsonic/releases/download/v2.2.3/subsonic.jsplugin.zip",
-  "entryHash": "a3e160195be9e75466c13dc1c9d2396dd9544cafbce264944554de057f1c0eeb",
-  "zipHash": "4b408c94e77f31fa55f6dd907f0e56dd85de71f66d8536eceb740dae68cd42de"
+  "entryHash": "e153210d92f17f0d20efdffd95072e2db6f2df324a3652ac68477f3e18ad9493",
+  "zipHash": "f719da99ef0ee0998965b84aa7e21614e9d85437df47bcce9d3818d07fd1f0cd"
 }
