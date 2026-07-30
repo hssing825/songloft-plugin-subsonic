@@ -164,13 +164,12 @@ router.post('/api/music/url', createMusicUrlHandler({
   }
 }))
 
-// POST /api/search/topone — 搜索+匹配+URL解析三合一，返回最佳匹配的可播放 URL
+// POST /api/search/topone — 搜索并返回可安全入库的插件解析型音源
 // 供 miot-plus 等插件在本地索引找不到歌曲时调用
 router.post('/api/search/topone', async (req: HTTPRequest) => {
   const body = parseBody(req)
   const keyword = String(body.keyword || '').trim()
   const hint: { title?: string; artist?: string; duration?: number } | undefined = body.hint
-  const quality = String(body.quality || '320k').trim()
 
   if (!keyword) return jsonResponse({ code: 400, msg: '缺少 keyword', data: null }, 400)
 
@@ -225,42 +224,39 @@ router.post('/api/search/topone', async (req: HTTPRequest) => {
     return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: 404, msg: 'song not found', data: null }) }
   }
 
-  // 按评分降序排列，依次尝试获取 URL
+  // 按评分降序排列，返回第一个配置仍然存在的解析型结果。
+  // 不返回 Subsonic 鉴权直链，避免 MIoT 把密码/token 持久化进 songs.url。
   allCandidates.sort((a, b) => b.score - a.score)
 
-  let lastError = ''
   for (const candidate of allCandidates) {
     const { item, configName } = candidate
     const config = await getConfig(configName)
     if (!config) continue
-    try {
-      const url = getStreamUrl(config, item.id)
-      if (url) {
-        return {
-          statusCode: 200,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: 0,
-            msg: 'success',
-            data: {
-              title: item.title || item.name || '',
-              artist: item.artist || '',
-              album: item.album || '',
-              duration: item.duration || 0,
-              cover_url: item.coverArt ? getStreamUrl(config, item.coverArt).replace('stream', 'getCoverArt') : undefined,
-              url,
-              source_data: { configName, songId: item.id },
-            },
-          }),
-        }
-      }
-    } catch (e: any) {
-      lastError = e.message || String(e)
-      // 单个失败继续尝试下一个候选
+    const title = item.title || item.name || ''
+    const artist = item.artist || ''
+    const lyric = `/api/v1/jsplugin/subsonic/lists/${encodeURIComponent(configName)}/lyric?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: 0,
+        msg: 'success',
+        data: {
+          title,
+          artist,
+          album: item.album || '',
+          duration: item.duration || 0,
+          url: '',
+          plugin_entry_path: 'subsonic',
+          source_data: { configName, songId: item.id },
+          dedup_key: `subsonic_${configName}_${item.id}`,
+          lyric,
+          lyric_source: 'url',
+        },
+      }),
     }
   }
 
-  console.warn(`[search/topone] 所有候选 URL 获取均失败，最后错误: ${lastError}`)
   return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: 404, msg: 'song not found', data: null }) }
 })
 
