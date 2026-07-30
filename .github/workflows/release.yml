@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -75,22 +77,25 @@ jobs:
           ZIP_NAME="${{ steps.plugin_info.outputs.zip_name }}"
           TAG="v${VERSION}"
 
-          # 已发布版本不可覆写，修复必须使用新的补丁版本。
+          # Release 资产不可覆写；允许从“资产已创建、metadata 推送失败”的状态恢复。
           if gh release view "${TAG}" &>/dev/null; then
-            echo "::error::Release ${TAG} already exists; choose a new version."
-            exit 1
+            echo "Release ${TAG} already exists; reusing immutable asset."
+            if ! gh release view "${TAG}" --json assets --jq '.assets[].name' | grep -Fxq "${ZIP_NAME}"; then
+              echo "::error::Release ${TAG} exists but asset ${ZIP_NAME} is missing."
+              exit 1
+            fi
+          else
+            gh release create "${TAG}" \
+              "dist/${ZIP_NAME}" \
+              --title "v${VERSION}" \
+              --notes "自动构建的 JS 插件 v${VERSION}"
           fi
-
-          gh release create "${TAG}" \
-            "dist/${ZIP_NAME}" \
-            --title "v${VERSION}" \
-            --notes "自动构建的 JS 插件 v${VERSION}"
 
           DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ZIP_NAME}"
           echo "download_url=${DOWNLOAD_URL}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-      - name: Commit version bump on current branch
+      - name: Synchronize release metadata on default branch
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DOWNLOAD_URL="${{ steps.create_release.outputs.download_url }}"
@@ -111,5 +116,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add plugin.json package.json package-lock.json
-          git diff --staged --quiet || git commit -m "chore(release): bump to v${VERSION}"
-          git push
+          git diff --staged --quiet || git commit -m "chore(release): synchronize metadata for v${VERSION}"
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"
