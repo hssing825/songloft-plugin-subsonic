@@ -1,37 +1,24 @@
 # HARNESS
 
-## 项目类型
-Songloft Subsonic Plugin (Node.js/TypeScript)
+## 已确认命令（人工维护）
 
-## 构建命令
-`npm run build`
+- **BuildCommand / harness:build**: `npm run build`
+- **TestCommand / harness:test**: `npm test`
+- **QuickCommand / harness:quick**: `npm run build`
+- **BugfixCommand / harness:bugfix**: `node --test tests/*.test.mjs`
+- **FullCommand / harness:full**: `npm test && ./node_modules/.bin/tsc --noEmit && npm run validate`
 
-## 编译启动诊断
-- **WorkingDirectory**: `D:\Code\github\songloft\songloft-plugin-subsonic`
-- **RecommendedTerminal**: powershell / bash
-- **CanRunBuildHere**: true
-- **BuildCommand**: `npm run build`
-- **FailureEvidence**: 记录完整命令、工作目录、终端类型、退出码、前 50 行和最后 100 行构建日志
+## Evidence
 
-## 快速验证命令
-`npm run build`
+- 根目录 `package.json` 的 `build`、`test` 与 `validate` scripts。
+- `tests/*.test.mjs` 对实际插件构建产物执行回归。
+- 本地 `typescript` devDependency 提供 `tsc --noEmit`。
 
-## Bugfix 验证命令
-`npm run validate`
+## MissingCommands
 
-## 完整验证命令
-`npm run build && npm run validate`
+- 无。
 
 ## 高风险目录
-- `src/router.ts`: 容易引入与前端的 API 兼容问题
 
-## 禁改区域
-- .git: version control metadata
-
-## 自动识别候选
-- Subsonic Client Integration
-
-## 需人工确认
-- `bugfix` 验证命令仍缺失，需人工补齐可信入口
-- build / quick / full 命令映射不完整，需人工确认最终入口
-
+- `src/router.ts`: 容易引入与前端的 API 兼容问题。
+- `src/server/index.ts`: Subsonic 协议兼容层与服务端路由。

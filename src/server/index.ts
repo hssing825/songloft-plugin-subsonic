@@ -264,6 +264,16 @@ const handleGetMusicDirectory: Handler = async (_req, query) => {
 
 // --- Search ---
 
+const hostSearchLimit = 100000
+
+async function searchAllSongs(query: string) {
+  const search = songloft.songs.search as unknown as (
+    query: string,
+    options: { limit: number; offset: number },
+  ) => ReturnType<typeof songloft.songs.search>
+  return search(query, { limit: hostSearchLimit, offset: 0 })
+}
+
 const handleSearch3: Handler = async (_req, query) => {
   const q = query.get('query') || ''
   const songCount = Math.min(parseInt(query.get('songCount') || '20'), 500)
@@ -273,7 +283,7 @@ const handleSearch3: Handler = async (_req, query) => {
   const albumCount = Math.min(parseInt(query.get('albumCount') || '20'), 100)
   const albumOffset = parseInt(query.get('albumOffset') || '0')
 
-  const songs = q ? await songloft.songs.search(q) : await songloft.songs.list({ limit: 100000 })
+  const songs = q ? await searchAllSongs(q) : await songloft.songs.list({ limit: hostSearchLimit })
   const songResults = songs.slice(songOffset, songOffset + songCount).map(s => songToSubsonic(s))
 
   const artistSet = new Map<string, any>()
@@ -305,7 +315,7 @@ const handleSearch2: Handler = async (_req, query) => {
   const artistCount = Math.min(parseInt(query.get('artistCount') || '20'), 100)
   const albumCount = Math.min(parseInt(query.get('albumCount') || '20'), 100)
 
-  const songs = q ? await songloft.songs.search(q) : await songloft.songs.list({ limit: 100000 })
+  const songs = q ? await searchAllSongs(q) : await songloft.songs.list({ limit: hostSearchLimit })
   const songResults = songs.slice(0, songCount).map(s => songToSubsonic(s))
 
   const artistSet = new Map<string, any>()
